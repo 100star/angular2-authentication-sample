@@ -1,37 +1,30 @@
-/// <reference path="../../typings/tsd.d.ts" />
+import { Component } from '@angular/core';
+import { Http } from '@angular/http';
+import { Router } from '@angular/router';
+import { AuthHttp } from 'angular2-jwt';
 
-import {Component, View} from 'angular2/angular2';
-import {coreDirectives} from 'angular2/directives';
-import {status, text} from '../utils/fetch'
-import { Router} from 'angular2/router';
-
-let styles   = require('./home.css');
-let template = require('./home.html');
-
+const styles = require('./home.css');
+const template = require('./home.html');
 
 @Component({
-  selector: 'home'
-})
-@View({
-  template:`<style>${styles}</style>\n${template}`,
-  directives: [coreDirectives]
+  selector: 'home',
+  template: template,
+  styles: [ styles ]
 })
 export class Home {
   jwt: string;
   decodedJwt: string;
-  router: Router;
   response: string;
   api: string;
 
-  constructor(router: Router) {
-    this.router = router;
-    this.jwt = localStorage.getItem('jwt');
+  constructor(public router: Router, public http: Http, public authHttp: AuthHttp) {
+    this.jwt = localStorage.getItem('id_token');
     this.decodedJwt = this.jwt && window.jwt_decode(this.jwt);
   }
 
   logout() {
-    localStorage.removeItem('jwt');
-    this.router.parent.navigate('/login');
+    localStorage.removeItem('id_token');
+    this.router.navigate(['login']);
   }
 
   callAnonymousApi() {
@@ -41,25 +34,24 @@ export class Home {
   callSecuredApi() {
     this._callApi('Secured', 'http://localhost:3001/api/protected/random-quote');
   }
+
   _callApi(type, url) {
     this.response = null;
-    this.api = type;
-    window.fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'bearer ' + this.jwt
-      }
-    })
-    .then(status)
-    .then(text)
-    .then((response) => {
-      this.response = response;
-    })
-    .catch((error) => {
-      this.response = error.message;
-    });
+    if (type === 'Anonymous') {
+      // For non-protected routes, just use Http
+      this.http.get(url)
+        .subscribe(
+          response => this.response = response.text(),
+          error => this.response = error.text()
+        );
+    }
+    if (type === 'Secured') {
+      // For protected routes, use AuthHttp
+      this.authHttp.get(url)
+        .subscribe(
+          response => this.response = response.text(),
+          error => this.response = error.text()
+        );
+    }
   }
-
 }

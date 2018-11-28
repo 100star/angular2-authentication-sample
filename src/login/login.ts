@@ -1,51 +1,38 @@
-/// <reference path="../../typings/tsd.d.ts" />
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { Http } from '@angular/http';
+import { contentHeaders } from '../common/headers';
 
-import {Component, View} from 'angular2/angular2';
-import {status, json} from '../utils/fetch'
-import { Router, RouterLink } from 'angular2/router';
-
-
-let styles   = require('./login.css');
-let template = require('./login.html');
-
+const styles   = require('./login.css');
+const template = require('./login.html');
 
 @Component({
-  selector: 'login'
-})
-@View({
-  template:`<style>${styles}</style>\n${template}`,
-  directives: [RouterLink]
+  selector: 'login',
+  template: template,
+  styles: [ styles ]
 })
 export class Login {
-  constructor(public router: Router) {
+  constructor(public router: Router, public http: Http) {
   }
 
   login(event, username, password) {
     event.preventDefault();
-    window.fetch('http://localhost:3001/sessions/create', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username, password
-      })
-    })
-    .then(status)
-    .then(json)
-    .then((response) => {
-      localStorage.setItem('jwt', response.id_token);
-      this.router.parent.navigate('/home');
-    })
-    .catch((error) => {
-      alert(error.message);
-      console.log(error.message);
-    });
+    let body = JSON.stringify({ username, password });
+    this.http.post('http://localhost:3001/sessions/create', body, { headers: contentHeaders })
+      .subscribe(
+        response => {
+          localStorage.setItem('id_token', response.json().id_token);
+          this.router.navigate(['home']);
+        },
+        error => {
+          alert(error.text());
+          console.log(error.text());
+        }
+      );
   }
 
   signup(event) {
     event.preventDefault();
-    this.router.parent.navigate('/signup');
+    this.router.navigate(['signup']);
   }
 }
